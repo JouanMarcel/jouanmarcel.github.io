@@ -1,0 +1,250 @@
+<!DOCTYPE html><meta charset="UTF-8" />
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport" />
+<title>Neax WebSockets</title>
+<style>
+	body {
+		margin: 0;
+		padding: 0;
+		background: rgb(10, 10, 40);
+	}
+	section {
+		width: 100vw;
+		height: 100vh;
+	}
+</style>
+<section></section>
+<script src="NoSleep.min.js"></script>
+<!--<script src="gyronorm.complete.min.js"></script>-->
+<script src="fulltilt.min.js"></script>
+<script src="visibility.js"></script>
+<script src="fullscreen.js"></script>
+<script src="clientinfo.js"></script>
+<script>
+	
+	navigator.vibrate = navigator.vibrate || navigator.webkitVibrate || navigator.mozVibrate || navigator.msVibrate;
+	
+	var smartstage = {};
+	smartstage.network = {};
+	smartstage.network.ip = '130.89.231.116'; // Enschede, SmartXP
+	//smartstage.network.ip = '192.168.1.158'; // Gronau, Home
+	//smartstage.network.ip = '192.168.178.31'; // Bonn, Home
+	smartstage.network.port = 8025;
+	smartstage.network.socket = new WebSocket('ws://' + smartstage.network.ip + ':' + smartstage.network.port + '/');
+	
+	smartstage.client = {};
+	smartstage.client.raw = header.join(' ');
+	smartstage.client.os = this.matchItem(smartstage.client.raw, os);
+	smartstage.client.browser = this.matchItem(smartstage.client.raw, browser);
+	smartstage.client.id = Math.random().toString(36).substring(2);
+		
+	smartstage.dom = {};
+	smartstage.dom.section = document.querySelector('section');
+	//smartstage.dom.newcomer = true;
+	
+	smartstage.sensor = {}; // touch, gyro, accr, accg, accf
+	
+	
+
+	smartstage.network.socket.onerror = function(e){
+		console.log('Socket error', e);
+		navigator.vibrate([500, 200, 500]);
+	}; 
+	smartstage.network.socket.onopen = function (e) { 
+		console.log('Socket open', e);
+		navigator.vibrate([200, 100, 200]);
+		
+  	smartstage.network.socket.send("OPEN#Include Device Information#" + smartstage.client.id);
+		smartstage.dom.section.addEventListener('mousemove', mousemove);
+		smartstage.dom.section.addEventListener('touchmove', touchmove);
+	};
+	smartstage.network.socket.onmessage = function (e) {
+		console.log('Received message', e);
+		var data = e.data.split('#');
+		if(data[0] == 'VIBR') { 
+			navigator.vibrate(data[1]);
+			console.log('Command', e.data);
+		} 
+	}  
+	smartstage.network.socket.onclose = function (e) {
+		console.log("Socken closed");
+		navigator.vibrate([200, 100, 500]); 
+	}
+	
+	window.onbeforeunload = function(e){
+		smartstage.network.socket.send("CLOS#Unloaded#" + smartstage.client.id);
+		smartstage.network.socket.close(); 
+	}; 
+	
+	
+	function tick(){
+		
+		window.requestAnimationFrame(tick);
+		
+		
+		 if (deviceOrientation) {
+
+      var quaternion = deviceOrientation.getScreenAdjustedQuaternion();
+      var matrix = deviceOrientation.getScreenAdjustedMatrix();
+      var euler = deviceOrientation.getScreenAdjustedEuler();
+			 
+			smartstage.network.socket.send("QUAT#" + quaternion.w + ":" + quaternion.x + ":" + quaternion.y + ":" + quaternion.z + "#" + smartstage.client.id);
+			 
+			smartstage.network.socket.send("GYRO#" + euler.alpha + ":" + euler.beta + ":" + euler.gamma + "#" + smartstage.client.id);
+			
+      //console.debug(quaternion);
+      //console.debug(matrix);
+      //console.debug(euler);
+
+    }
+		
+		if(deviceMotion) {
+			
+			window.alert(JSON.stringify(deviceMotion));
+			
+		}
+		
+		
+		// check if still open
+		
+		if(smartstage.sensor.touch != null) {
+			smartstage.network.socket.send('MOVE#' + smartstage.sensor.touch[0] + ':' + smartstage.sensor.touch[1] + '#' + smartstage.client.id);
+			smartstage.sensor.touch = null;
+		}
+		
+		if(smartstage.sensor.gyro != null) {
+			smartstage.network.socket.send("GYRO#" + smartstage.sensor.gyro[0] + ":" + smartstage.sensor.gyro[1] + ":" + smartstage.sensor.gyro[2] + '#' + smartstage.client.id);
+			smartstage.sensor.gyro = null;
+		}
+		
+		if(smartstage.sensor.accr != null) {
+			smartstage.network.socket.send("ACCR#" + smartstage.sensor.accr[0] + ":" + smartstage.sensor.accr[1] + ":" + smartstage.sensor.accr[2] + '#' + smartstage.client.id);
+			smartstage.sensor.accr = null;
+		}
+		
+		if(smartstage.sensor.accg != null) {
+			smartstage.network.socket.send("ACCG#" + smartstage.sensor.accg[0] + ":" + smartstage.sensor.accg[1] + ":" + smartstage.sensor.accg[2] + '#' + smartstage.client.id);
+			smartstage.sensor.accg = null;
+		}
+		
+		if(smartstage.sensor.accf != null) {
+			smartstage.network.socket.send("ACCF#" + smartstage.sensor.accf[0] + ":" + smartstage.sensor.accf[1] + ":" + smartstage.sensor.accf[2] + '#' + smartstage.client.id);
+			smartstage.sensor.accf = null;
+		}
+		/*
+		if(smartstage.dom.newcomer == false && document.body.dataset.visibility == 'hidden') {
+			smartstage.dom.newcomer = true;
+			console.log("off");
+		} else if (smartstage.dom.newcomer == true && document.body.dataset.visibility == 'visible') {
+			smartstage.dom.newcomer = false;
+			document.addEventListener('touchstart', enableNoSleep, false);
+			document.addEventListener('mousedown', enableNoSleep, false);
+			console.log("on again");
+		}
+		*/
+	}
+	
+	
+	
+	
+  var promiseOrientation = new FULLTILT.getDeviceOrientation({ 'type': 'world' });
+  var promiseMotion = new FULLTILT.getDeviceMotion();
+  var deviceOrientation, deviceMotion;
+
+  promiseOrientation.then(function(controller) {
+		deviceOrientation = controller;
+  }).catch(function(message) { console.error(message); });
+	
+	
+  promiseMotion.then(function(controller) {
+		
+		//deviceMotion = controller;
+		console.log("Then happened");
+		controller.listen(function() {
+			// Display calculated screen-adjusted devicemotion
+			var screenAccG = motionData.getScreenAdjustedAccelerationIncludingGravity() || {};
+			
+			alert(screenAccG.x);
+			console.log(screenAccG.y);
+			console.log(screenAccG.z);
+			
+			// Display raw devicemotion data
+			var rawEvent = motionData.getLastRawEventData();
+			var accG = rawEvent.accelerationIncludingGravity || {};
+			/*
+			accGX.textContent = printDataValue(accG.x);
+			accGY.textContent = printDataValue(accG.y);
+			accGZ.textContent = printDataValue(accG.z);
+			*/
+		});
+		
+		
+  }).catch(function(message) { console.error(message); });
+	
+	
+	
+	
+	/*
+	var gn = new GyroNorm();
+	var args = {
+    frequency: 5,                   // ( How often the object sends the values - milliseconds )
+    gravityNormalized: true,         // ( If the garvity related values to be normalized )
+    orientationBase: GyroNorm.GAME,      // ( Can be GyroNorm.GAME or GyroNorm.WORLD. gn.GAME returns orientation values with respect to the head direction of the device. gn.WORLD returns the orientation values with respect to the actual north direction of the world. )
+    decimalCount: 2,                 // ( How many digits after the decimal point will there be in the return values )
+    logger: null,                    // ( Function to be called to log messages from gyronorm.js )
+    screenAdjusted: false            // ( If set to true it will return screen adjusted values. )
+	};
+	gn.init(args).then(function(){
+			gn.start(function(data){
+				
+				//console.log(data);
+				smartstage.sensor.gyro = [data.do.alpha, data.do.beta, data.do.gamma];
+				smartstage.sensor.accr = [data.dm.x, data.dm.y, data.dm.z];
+				smartstage.sensor.accg = [data.dm.gx, data.dm.gy, data.dm.gz];
+				smartstage.sensor.accf = [data.dm.alpha, data.dm.beta, data.dm.gamma];
+				
+			});
+	}).catch(function(e){
+		// Catch if the DeviceOrientation or DeviceMotion is not supported by the browser or device
+	});
+	*/
+	
+	
+	
+	function mousemove(e){
+		if(smartstage.network.socket.readyState != 1) return;
+		var w = (document.body.offsetWidth) ? document.body.offsetWidth : document.body.clientWidth;
+		var h = (document.body.offsetHeight) ? document.body.offsetHeight : document.body.clientHeight;
+		var x = e.x / w;
+		var y = e.y / h;
+		//console.log(e);
+		//console.log(w, h, x, y);
+		smartstage.sensor.touch = [x, y];
+	}
+	function touchmove(e){
+		e.preventDefault();
+		if(smartstage.network.socket.readyState != 1) return;
+		var w = (document.body.offsetWidth) ? document.body.offsetWidth : document.body.clientWidth;
+		var h = (document.body.offsetHeight) ? document.body.offsetHeight : document.body.clientHeight;
+		var x = e.touches[0].pageX / w; 
+		var y = e.touches[0].pageY / h;
+		
+		smartstage.sensor.touch = [x, y];
+	}
+
+	
+	
+	// Prevent mobile phone from sleepin; from:
+	// https://github.com/richtr/NoSleep.js
+	var noSleep = new NoSleep();
+	function enableNoSleep() {
+		window.tick();
+		noSleep.enable();
+		//window.toggleFullScreen();
+		document.removeEventListener('touchstart', enableNoSleep, false);
+		document.removeEventListener('mousedown', enableNoSleep, false);
+	}
+	document.addEventListener('touchstart', enableNoSleep, false);
+	document.addEventListener('mousedown', enableNoSleep, false);
+	
+	
+</script>

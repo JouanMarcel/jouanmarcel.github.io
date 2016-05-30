@@ -1,0 +1,46 @@
+<script>
+  
+  var ip = '130.89.231.116'; // Enschede, SmartXP
+	//ip = '192.168.1.158'; // Gronau, Home
+	//ip = '192.168.178.31'; // Bonn, Home
+	
+  var port = 8025;
+  
+  var socket = new WebSocket('ws://' + ip + ':' + port + '/');
+  
+  
+  socket.onerror = function(e){
+		console.log('Socket error', e);
+	};
+	socket.onopen = function (e) { 
+		console.log('Socket open', e);
+    socket.send("READY");
+	};
+	socket.onmessage = function (e) {
+		console.log('Received message', e);
+    
+		/*
+		var data = e.data.split('#');
+    var index = data[0];
+    var timestamp = data[1];
+    socket.send(index + "#" + timestamp);
+    */
+		
+		socket.send(e.data);
+    
+	}
+	socket.onclose = function (e) {
+		console.log('Socket closed', e);
+	}
+	
+	window.onbeforeunload = function(e){
+		socket.close();
+	};
+  
+  
+	function tick(){
+		
+		window.requestAnimationFrame(tick);
+  
+  }
+</script>
